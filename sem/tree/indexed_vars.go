@@ -24,7 +24,6 @@ import (
 // IndexedVarContainer provides the implementation of TypeCheck, Eval, and
 // String for IndexedVars.
 type IndexedVarContainer interface {
-	IndexedVarEval(idx int, ctx *EvalContext) (Datum, error)
 	IndexedVarResolvedType(idx int) types.T
 	// IndexedVarNodeFormatter returns a NodeFormatter; if an object that
 	// wishes to implement this interface has lost the textual name that an
@@ -70,14 +69,6 @@ func (v *IndexedVar) TypeCheck(ctx *SemaContext, desired types.T) (TypedExpr, er
 	}
 	v.typ = ctx.IVarContainer.IndexedVarResolvedType(v.Idx)
 	return v, nil
-}
-
-// Eval is part of the TypedExpr interface.
-func (v *IndexedVar) Eval(ctx *EvalContext) (Datum, error) {
-	if ctx.IVarContainer == nil || ctx.IVarContainer == unboundContainer {
-		panic("indexed var must be bound to a container before evaluation")
-	}
-	return ctx.IVarContainer.IndexedVarEval(v.Idx, ctx)
 }
 
 // ResolvedType is part of the TypedExpr interface.
@@ -283,11 +274,6 @@ type unboundContainerType struct{}
 // is constant after parse).
 var unboundContainer = &unboundContainerType{}
 
-// IndexedVarEval is part of the IndexedVarContainer interface.
-func (*unboundContainerType) IndexedVarEval(idx int, _ *EvalContext) (Datum, error) {
-	panic(fmt.Sprintf("unbound ordinal reference @%d", idx+1))
-}
-
 // IndexedVarResolvedType is part of the IndexedVarContainer interface.
 func (*unboundContainerType) IndexedVarResolvedType(idx int) types.T {
 	panic(fmt.Sprintf("unbound ordinal reference @%d", idx+1))
@@ -303,11 +289,6 @@ type typeContainer struct {
 }
 
 var _ IndexedVarContainer = &typeContainer{}
-
-// IndexedVarEval is part of the IndexedVarContainer interface.
-func (tc *typeContainer) IndexedVarEval(idx int, ctx *EvalContext) (Datum, error) {
-	panic("no eval allowed in typeContainer")
-}
 
 // IndexedVarResolvedType is part of the IndexedVarContainer interface.
 func (tc *typeContainer) IndexedVarResolvedType(idx int) types.T {

@@ -17,7 +17,7 @@ package util
 import (
 	"testing"
 
-	"github.com/cockroachdb/cockroach/pkg/util/randutil"
+	"github.com/eandre/sqlparse/pkg/util/randutil"
 )
 
 func TestUnionFind(t *testing.T) {

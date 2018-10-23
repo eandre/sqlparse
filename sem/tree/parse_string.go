@@ -24,7 +24,7 @@ import (
 
 // ParseStringAs reads s as type t. If t is Bytes or String, s is returned
 // unchanged. Otherwise s is parsed with the given type's Parse func.
-func ParseStringAs(t types.T, s string, evalCtx *EvalContext) (Datum, error) {
+func ParseStringAs(t types.T, s string) (Datum, error) {
 	var d Datum
 	var err error
 	switch t {
@@ -37,14 +37,14 @@ func ParseStringAs(t types.T, s string, evalCtx *EvalContext) (Datum, error) {
 			if err != nil {
 				return nil, err
 			}
-			d, err = ParseDArrayFromString(evalCtx, s, typ)
+			d, err = ParseDArrayFromString(s, typ)
 			if err != nil {
 				return nil, err
 			}
 		case types.TCollatedString:
-			d = NewDCollatedString(s, t.Locale, &evalCtx.collationEnv)
+			d = NewDCollatedString(s, t.Locale)
 		default:
-			d, err = parseStringAs(t, s, evalCtx)
+			d, err = parseStringAs(t, s)
 			if d == nil && err == nil {
 				return nil, pgerror.NewAssertionErrorf("unknown type %s (%T)", t, t)
 			}
@@ -55,32 +55,25 @@ func ParseStringAs(t types.T, s string, evalCtx *EvalContext) (Datum, error) {
 
 // ParseDatumStringAs parses s as type t. This function is guaranteed to
 // round-trip when printing a Datum with FmtParseDatums.
-func ParseDatumStringAs(t types.T, s string, evalCtx *EvalContext) (Datum, error) {
+func ParseDatumStringAs(t types.T, s string) (Datum, error) {
 	switch t {
 	case types.Bytes:
 		return ParseDByte(s)
 	default:
-		return ParseStringAs(t, s, evalCtx)
+		return ParseStringAs(t, s)
 	}
 }
 
-type locationContext interface {
-	GetLocation() *time.Location
-}
-
-var _ locationContext = &EvalContext{}
-var _ locationContext = &SemaContext{}
-
 // parseStringAs parses s as type t for simple types. Bytes, arrays, collated
 // strings are not handled. nil, nil is returned if t is not a supported type.
-func parseStringAs(t types.T, s string, loc locationContext) (Datum, error) {
+func parseStringAs(t types.T, s string) (Datum, error) {
 	switch t {
 	case types.BitArray:
 		return ParseDBitArray(s)
 	case types.Bool:
 		return ParseDBool(s)
 	case types.Date:
-		return ParseDDate(s, loc.GetLocation())
+		return ParseDDate(s, time.UTC)
 	case types.Decimal:
 		return ParseDDecimal(s)
 	case types.Float:
@@ -98,10 +91,9 @@ func parseStringAs(t types.T, s string, loc locationContext) (Datum, error) {
 	case types.Time:
 		return ParseDTime(s)
 	case types.Timestamp:
-		eCtx, _ := loc.(*EvalContext)
-		return ParseDTimestamp(eCtx, s, time.Microsecond)
+		return ParseDTimestamp(s, time.Microsecond)
 	case types.TimestampTZ:
-		return ParseDTimestampTZ(s, loc.GetLocation(), time.Microsecond)
+		return ParseDTimestampTZ(s, time.UTC, time.Microsecond)
 	case types.UUID:
 		return ParseDUuidFromString(s)
 	default:

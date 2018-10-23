@@ -302,11 +302,8 @@ func (m AdditionMode) GetAdditionMode() AdditionMode {
 }
 
 // Add returns the time t+d, using a configurable mode.
-func Add(ctx Context, t time.Time, d Duration) time.Time {
-	var mode AdditionMode
-	if ctx != nil {
-		mode = ctx.GetAdditionMode()
-	}
+func Add(t time.Time, d Duration) time.Time {
+	mode := AdditionModeCompatible
 
 	// We can fast-path if the duration is always a fixed amount of time,
 	// or if the day number that we're starting from can never result

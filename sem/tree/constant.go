@@ -497,7 +497,7 @@ func (expr *StrVal) ResolveAsType(ctx *SemaContext, typ types.T) (Datum, error) 
 		return ParseDByte(expr.s)
 	}
 
-	datum, err := parseStringAs(typ, expr.s, ctx)
+	datum, err := parseStringAs(typ, expr.s)
 	if datum == nil && err == nil {
 		return nil, pgerror.NewAssertionErrorf("could not resolve %T %v into a %T", expr, expr, typ)
 	}

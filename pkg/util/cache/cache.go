@@ -24,7 +24,7 @@ import (
 
 	"github.com/biogo/store/llrb"
 
-	"github.com/cockroachdb/cockroach/pkg/util/interval"
+	"github.com/eandre/sqlparse/pkg/util/interval"
 )
 
 // EvictionPolicy is the cache eviction policy enum.

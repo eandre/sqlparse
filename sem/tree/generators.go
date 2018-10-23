@@ -59,7 +59,3 @@ type ValueGenerator interface {
 	// been called yet. It must not be called in-between restarts.
 	Close()
 }
-
-// GeneratorFactory is the type of constructor functions for
-// ValueGenerator objects.
-type GeneratorFactory func(ctx *EvalContext, args Datums) (ValueGenerator, error)

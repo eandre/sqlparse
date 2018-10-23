@@ -50,17 +50,6 @@ type Expr interface {
 // TypedExpr represents a well-typed expression.
 type TypedExpr interface {
 	Expr
-	// Eval evaluates an SQL expression. Expression evaluation is a
-	// mostly straightforward walk over the parse tree. The only
-	// significant complexity is the handling of types and implicit
-	// conversions. See binOps and cmpOps for more details. Note that
-	// expression evaluation returns an error if certain node types are
-	// encountered: Placeholder, VarName (and related UnqualifiedStar,
-	// UnresolvedName and AllColumnsSelector) or Subquery. These nodes
-	// should be replaced prior to expression evaluation by an
-	// appropriate WalkExpr. For example, Placeholder should be replace
-	// by the argument passed from the client.
-	Eval(*EvalContext) (Datum, error)
 	// ResolvedType provides the type of the TypedExpr, which is the type of Datum
 	// that the TypedExpr will return when evaluated.
 	ResolvedType() types.T
@@ -1213,41 +1202,12 @@ func (node *FuncExpr) ResolvedOverload() *Overload {
 	return node.fn
 }
 
-// GetAggregateConstructor exposes the AggregateFunc field for use by
-// the group node in package sql.
-func (node *FuncExpr) GetAggregateConstructor() func(*EvalContext, Datums) AggregateFunc {
-	if node.fn == nil || node.fn.AggregateFunc == nil {
-		return nil
-	}
-	return func(evalCtx *EvalContext, arguments Datums) AggregateFunc {
-		types := typesOfExprs(node.Exprs)
-		return node.fn.AggregateFunc(types, evalCtx, arguments)
-	}
-}
-
-// GetWindowConstructor returns a window function constructor if the
-// FuncExpr is a built-in window function.
-func (node *FuncExpr) GetWindowConstructor() func(*EvalContext) WindowFunc {
-	if node.fn == nil || node.fn.WindowFunc == nil {
-		return nil
-	}
-	return func(evalCtx *EvalContext) WindowFunc {
-		types := typesOfExprs(node.Exprs)
-		return node.fn.WindowFunc(types, evalCtx)
-	}
-}
-
 func typesOfExprs(exprs Exprs) []types.T {
 	types := make([]types.T, len(exprs))
 	for i, expr := range exprs {
 		types[i] = expr.(TypedExpr).ResolvedType()
 	}
 	return types
-}
-
-// IsGeneratorApplication returns true iff the function applied is a generator (SRF).
-func (node *FuncExpr) IsGeneratorApplication() bool {
-	return node.fn != nil && node.fn.Generator != nil
 }
 
 // IsWindowFunctionApplication returns true iff the function is being applied as a window function.

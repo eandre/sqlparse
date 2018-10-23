@@ -17,8 +17,7 @@ package randutil_test
 import (
 	"testing"
 
-	_ "github.com/cockroachdb/cockroach/pkg/util/log" // for flags
-	"github.com/cockroachdb/cockroach/pkg/util/randutil"
+	"github.com/eandre/sqlparse/pkg/util/randutil"
 )
 
 func TestPseudoRand(t *testing.T) {

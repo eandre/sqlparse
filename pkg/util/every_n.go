@@ -17,7 +17,7 @@ package util
 import (
 	"time"
 
-	"github.com/cockroachdb/cockroach/pkg/util/syncutil"
+	"github.com/eandre/sqlparse/pkg/util/syncutil"
 )
 
 // EveryN provides a way to rate limit spammy events. It tracks how recently a

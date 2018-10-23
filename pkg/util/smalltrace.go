@@ -21,7 +21,7 @@ import (
 )
 
 var prefix = func() string {
-	result := "github.com/cockroachdb/cockroach/pkg/"
+	result := "github.com/eandre/sqlparse/pkg/"
 	if runtime.Compiler == "gccgo" {
 		result = strings.Replace(result, ".", "_", -1)
 		result = strings.Replace(result, "/", "_", -1)

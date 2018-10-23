@@ -5,7 +5,6 @@
 package csv_test
 
 import (
-	"context"
 	"fmt"
 	"io"
 	"log"
@@ -16,7 +15,6 @@ import (
 )
 
 func ExampleReader() {
-	ctx := context.Background()
 	in := `first_name,last_name,username
 "Rob","Pike",rob
 Ken,Thompson,ken
@@ -45,7 +43,6 @@ Ken,Thompson,ken
 // This example shows how csv.Reader can be configured to handle other
 // types of CSV files.
 func ExampleReader_options() {
-	ctx := context.Background()
 	in := `first_name;last_name;username
 "Rob";"Pike";rob
 # lines beginning with a # character are ignored
@@ -67,7 +64,6 @@ Ken;Thompson;ken
 }
 
 func ExampleReader_ReadAll() {
-	ctx := context.Background()
 	in := `first_name,last_name,username
 "Rob","Pike",rob
 Ken,Thompson,ken
@@ -86,7 +82,6 @@ Ken,Thompson,ken
 }
 
 func ExampleWriter() {
-	ctx := context.Background()
 	records := [][]string{
 		{"first_name", "last_name", "username"},
 		{"Rob", "Pike", "rob"},
@@ -116,7 +111,6 @@ func ExampleWriter() {
 }
 
 func ExampleWriter_WriteAll() {
-	ctx := context.Background()
 	records := [][]string{
 		{"first_name", "last_name", "username"},
 		{"Rob", "Pike", "rob"},

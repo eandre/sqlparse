@@ -20,8 +20,8 @@ import (
 	"testing"
 	"unicode"
 
-	"github.com/cockroachdb/cockroach/pkg/sql/parser"
-	"github.com/cockroachdb/cockroach/pkg/sql/pgwire/pgerror"
+	"github.com/eandre/sqlparse/parser"
+	"github.com/eandre/sqlparse/pkg/util/pgerror"
 )
 
 func TestHelpFunctions(t *testing.T) {

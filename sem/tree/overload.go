@@ -46,11 +46,6 @@ type Overload struct {
 	// infinity"), but should focus more on ease of understanding so other structures
 	// might be more appropriate.
 	Info string
-
-	AggregateFunc func([]types.T, *EvalContext, Datums) AggregateFunc
-	WindowFunc    func([]types.T, *EvalContext) WindowFunc
-	Fn            func(*EvalContext, Datums) (Datum, error)
-	Generator     GeneratorFactory
 }
 
 // params implements the overloadImpl interface.

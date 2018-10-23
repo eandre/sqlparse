@@ -17,12 +17,10 @@ package privilege_test
 import (
 	"testing"
 
-	"github.com/cockroachdb/cockroach/pkg/sql/privilege"
-	"github.com/cockroachdb/cockroach/pkg/util/leaktest"
+	"github.com/eandre/sqlparse/pkg/sql/privilege"
 )
 
 func TestPrivilegeDecode(t *testing.T) {
-	defer leaktest.AfterTest(t)()
 	testCases := []struct {
 		raw              uint32
 		privileges       privilege.List

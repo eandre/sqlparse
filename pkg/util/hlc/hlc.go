@@ -19,14 +19,13 @@
 package hlc
 
 import (
-	"context"
 	"fmt"
+	"log"
 	"sync/atomic"
 	"time"
 
-	"github.com/cockroachdb/cockroach/pkg/util/log"
-	"github.com/cockroachdb/cockroach/pkg/util/syncutil"
-	"github.com/cockroachdb/cockroach/pkg/util/timeutil"
+	"github.com/eandre/sqlparse/pkg/util/syncutil"
+	"github.com/eandre/sqlparse/pkg/util/timeutil"
 	"github.com/pkg/errors"
 )
 
@@ -228,14 +227,13 @@ func (c *Clock) getPhysicalClockLocked() int64 {
 		interval := c.mu.lastPhysicalTime - newTime
 		if interval > int64(c.maxOffset/10) {
 			c.mu.monotonicityErrorsCount++
-			log.Warningf(context.TODO(), "backward time jump detected (%f seconds)", float64(-interval)/1e9)
+			log.Printf("backward time jump detected (%f seconds)", float64(-interval)/1e9)
 		}
 
 		if c.mu.forwardClockJumpCheckEnabled {
 			toleratedForwardClockJump := c.toleratedForwardClockJump()
 			if int64(toleratedForwardClockJump) <= -interval {
 				log.Fatalf(
-					context.TODO(),
 					"detected forward time jump of %f seconds is not allowed with tolerance of %f seconds",
 					float64(-interval)/1e9,
 					float64(toleratedForwardClockJump)/1e9,
@@ -275,7 +273,6 @@ func (c *Clock) enforceWallTimeWithinBoundLocked() {
 	// WallTime should not cross the upper bound (if WallTimeUpperBound is set)
 	if c.mu.wallTimeUpperBound != 0 && c.mu.timestamp.WallTime > c.mu.wallTimeUpperBound {
 		log.Fatalf(
-			context.TODO(),
 			"wall time %d is not allowed to be greater than upper bound of %d.",
 			c.mu.timestamp.WallTime,
 			c.mu.wallTimeUpperBound,
@@ -309,7 +306,7 @@ func (c *Clock) Update(rt Timestamp) Timestamp {
 	defer c.mu.Unlock()
 	updateT, err := c.updateLocked(rt, true)
 	if err != nil {
-		log.Warningf(context.TODO(), "%s - updating anyway", err)
+		log.Printf("%s - updating anyway", err)
 	}
 	return updateT
 }

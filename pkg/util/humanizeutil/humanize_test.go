@@ -18,7 +18,7 @@ import (
 	"math"
 	"testing"
 
-	"github.com/eahdre/sqlparse/pkg/util/humanizeutil"
+	"github.com/eandre/sqlparse/pkg/util/humanizeutil"
 )
 
 // TestHumanizeBytes verifies both IBytes and ParseBytes.

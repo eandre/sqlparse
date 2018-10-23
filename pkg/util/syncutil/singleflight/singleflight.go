@@ -11,7 +11,7 @@ package singleflight
 import (
 	"sync"
 
-	"github.com/cockroachdb/cockroach/pkg/util/syncutil"
+	"github.com/eandre/sqlparse/pkg/util/syncutil"
 )
 
 // call is an in-flight or completed singleflight.Do call

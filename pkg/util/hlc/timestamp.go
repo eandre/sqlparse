@@ -19,7 +19,7 @@ import (
 	"math"
 	"time"
 
-	"github.com/cockroachdb/cockroach/pkg/util/timeutil"
+	"github.com/eandre/sqlparse/pkg/util/timeutil"
 )
 
 // Timestamp constant values.

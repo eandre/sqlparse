@@ -18,7 +18,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/cockroachdb/cockroach/pkg/util/randutil"
+	"github.com/eandre/sqlparse/pkg/util/randutil"
 )
 
 func TestFastIntMap(t *testing.T) {

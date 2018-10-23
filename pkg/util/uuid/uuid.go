@@ -115,7 +115,7 @@ func (u *UUID) UnmarshalJSON(data []byte) error {
 // MakeV4 delegates to "github.com/satori/go.uuid".NewV4 and wraps the result in
 // a UUID.
 func MakeV4() UUID {
-	return UUID{uuid.NewV4()}
+	return UUID{uuid.Must(uuid.NewV4())}
 }
 
 // NewPopulatedUUID returns a populated UUID.

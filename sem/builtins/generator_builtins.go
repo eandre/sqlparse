@@ -19,13 +19,12 @@ import (
 	"sort"
 	"time"
 
-	"github.com/cockroachdb/cockroach/pkg/sql/lex"
-	"github.com/cockroachdb/cockroach/pkg/sql/pgwire/pgerror"
-	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
-	"github.com/cockroachdb/cockroach/pkg/sql/sem/types"
-	"github.com/cockroachdb/cockroach/pkg/util/arith"
-	"github.com/cockroachdb/cockroach/pkg/util/duration"
-	"github.com/cockroachdb/cockroach/pkg/util/json"
+	"github.com/eandre/sqlparse/lex"
+	"github.com/eandre/sqlparse/pkg/util/arith"
+	"github.com/eandre/sqlparse/pkg/util/json"
+	"github.com/eandre/sqlparse/pkg/util/pgerror"
+	"github.com/eandre/sqlparse/sem/tree"
+	"github.com/eandre/sqlparse/sem/types"
 )
 
 // See the comments at the start of generators.go for details about
@@ -69,19 +68,16 @@ var generators = map[string]builtinDefinition{
 		makeGeneratorOverload(
 			tree.ArgTypes{{"start", types.Int}, {"end", types.Int}},
 			seriesValueGeneratorType,
-			makeSeriesGenerator,
 			"Produces a virtual table containing the integer values from `start` to `end`, inclusive.",
 		),
 		makeGeneratorOverload(
 			tree.ArgTypes{{"start", types.Int}, {"end", types.Int}, {"step", types.Int}},
 			seriesValueGeneratorType,
-			makeSeriesGenerator,
 			"Produces a virtual table containing the integer values from `start` to `end`, inclusive, by increment of `step`.",
 		),
 		makeGeneratorOverload(
 			tree.ArgTypes{{"start", types.Timestamp}, {"end", types.Timestamp}, {"step", types.Interval}},
 			seriesTSValueGeneratorType,
-			makeTSSeriesGenerator,
 			"Produces a virtual table containing the timestamp values from `start` to `end`, inclusive, by increment of `step`.",
 		),
 	),
@@ -91,7 +87,6 @@ var generators = map[string]builtinDefinition{
 		makeGeneratorOverload(
 			tree.ArgTypes{},
 			keywordsValueGeneratorType,
-			makeKeywordsGenerator,
 			"Produces a virtual table containing the keywords known to the SQL parser.",
 		),
 	),
@@ -106,7 +101,6 @@ var generators = map[string]builtinDefinition{
 				}
 				return types.UnwrapType(args[0].ResolvedType()).(types.TArray).Typ
 			},
-			makeArrayGenerator,
 			"Returns the input array as a set of rows",
 		),
 	),
@@ -124,7 +118,6 @@ var generators = map[string]builtinDefinition{
 					Labels: expandArrayValueGeneratorLabels,
 				}
 			},
-			makeExpandArrayGenerator,
 			"Returns the input array as a set of rows with an index",
 		),
 	),
@@ -133,7 +126,6 @@ var generators = map[string]builtinDefinition{
 		makeGeneratorOverload(
 			tree.ArgTypes{},
 			unaryValueGeneratorType,
-			makeUnaryGenerator,
 			"Produces a virtual table containing a single row with no values.\n\n"+
 				"This function is used only by CockroachDB's developers for testing purposes.",
 		),
@@ -144,19 +136,16 @@ var generators = map[string]builtinDefinition{
 		makeGeneratorOverload(
 			tree.ArgTypes{{"array", types.AnyArray}},
 			subscriptsValueGeneratorType,
-			makeGenerateSubscriptsGenerator,
 			"Returns a series comprising the given array's subscripts.",
 		),
 		makeGeneratorOverload(
 			tree.ArgTypes{{"array", types.AnyArray}, {"dim", types.Int}},
 			subscriptsValueGeneratorType,
-			makeGenerateSubscriptsGenerator,
 			"Returns a series comprising the given array's subscripts.",
 		),
 		makeGeneratorOverload(
 			tree.ArgTypes{{"array", types.AnyArray}, {"dim", types.Int}, {"reverse", types.Bool}},
 			subscriptsValueGeneratorType,
-			makeGenerateSubscriptsGenerator,
 			"Returns a series comprising the given array's subscripts.\n\n"+
 				"When reverse is true, the series is returned in reverse order.",
 		),
@@ -175,9 +164,9 @@ var generators = map[string]builtinDefinition{
 }
 
 func makeGeneratorOverload(
-	in tree.ArgTypes, ret types.T, g tree.GeneratorFactory, info string,
+	in tree.ArgTypes, ret types.T, info string,
 ) tree.Overload {
-	return makeGeneratorOverloadWithReturnType(in, tree.FixedReturnType(ret), g, info)
+	return makeGeneratorOverloadWithReturnType(in, tree.FixedReturnType(ret), info)
 }
 
 func newUnsuitableUseOfGeneratorError() error {
@@ -185,16 +174,12 @@ func newUnsuitableUseOfGeneratorError() error {
 }
 
 func makeGeneratorOverloadWithReturnType(
-	in tree.ArgTypes, retType tree.ReturnTyper, g tree.GeneratorFactory, info string,
+	in tree.ArgTypes, retType tree.ReturnTyper, info string,
 ) tree.Overload {
 	return tree.Overload{
 		Types:      in,
 		ReturnType: retType,
-		Generator:  g,
-		Fn: func(ctx *tree.EvalContext, args tree.Datums) (tree.Datum, error) {
-			return nil, newUnsuitableUseOfGeneratorError()
-		},
-		Info: info,
+		Info:       info,
 	}
 }
 
@@ -206,10 +191,6 @@ type keywordsValueGenerator struct {
 var keywordsValueGeneratorType = types.TTuple{
 	Types:  []types.T{types.String, types.String, types.String},
 	Labels: []string{"word", "catcode", "catdesc"},
-}
-
-func makeKeywordsGenerator(_ *tree.EvalContext, _ tree.Datums) (tree.ValueGenerator, error) {
-	return &keywordsValueGenerator{}, nil
 }
 
 // ResolvedType implements the tree.ValueGenerator interface.
@@ -258,7 +239,6 @@ var keywordNames = func() []string {
 // seriesValueGenerator supports the execution of generate_series()
 // with integer bounds.
 type seriesValueGenerator struct {
-	ctx                                 *tree.EvalContext
 	origStart, value, start, stop, step interface{}
 	nextOK                              bool
 	genType                             types.T
@@ -297,72 +277,8 @@ func seriesGenIntValue(s *seriesValueGenerator) tree.Datums {
 	return tree.Datums{tree.NewDInt(tree.DInt(s.value.(int64)))}
 }
 
-// seriesTSNext performs calendar-aware math.
-func seriesTSNext(s *seriesValueGenerator) (bool, error) {
-	step := s.step.(duration.Duration)
-	start := s.start.(time.Time)
-	stop := s.stop.(time.Time)
-
-	if !s.nextOK {
-		return false, nil
-	}
-
-	stepForward := step.Compare(duration.Duration{}) > 0
-	if !stepForward && (start.Before(stop)) {
-		return false, nil
-	}
-	if stepForward && (stop.Before(start)) {
-		return false, nil
-	}
-
-	s.value = start
-	s.start = duration.Add(s.ctx, start, step)
-	return true, nil
-}
-
 func seriesGenTSValue(s *seriesValueGenerator) tree.Datums {
 	return tree.Datums{tree.MakeDTimestamp(s.value.(time.Time), time.Microsecond)}
-}
-
-func makeSeriesGenerator(ctx *tree.EvalContext, args tree.Datums) (tree.ValueGenerator, error) {
-	start := int64(tree.MustBeDInt(args[0]))
-	stop := int64(tree.MustBeDInt(args[1]))
-	step := int64(1)
-	if len(args) > 2 {
-		step = int64(tree.MustBeDInt(args[2]))
-	}
-	if step == 0 {
-		return nil, errStepCannotBeZero
-	}
-	return &seriesValueGenerator{
-		ctx:       ctx,
-		origStart: start,
-		stop:      stop,
-		step:      step,
-		genType:   seriesValueGeneratorType,
-		genValue:  seriesGenIntValue,
-		next:      seriesIntNext,
-	}, nil
-}
-
-func makeTSSeriesGenerator(ctx *tree.EvalContext, args tree.Datums) (tree.ValueGenerator, error) {
-	start := args[0].(*tree.DTimestamp).Time
-	stop := args[1].(*tree.DTimestamp).Time
-	step := args[2].(*tree.DInterval).Duration
-
-	if step.Compare(duration.Duration{}) == 0 {
-		return nil, errStepCannotBeZero
-	}
-
-	return &seriesValueGenerator{
-		ctx:       ctx,
-		origStart: start,
-		stop:      stop,
-		step:      step,
-		genType:   seriesTSValueGeneratorType,
-		genValue:  seriesGenTSValue,
-		next:      seriesTSNext,
-	}, nil
 }
 
 // ResolvedType implements the tree.ValueGenerator interface.
@@ -389,11 +305,6 @@ func (s *seriesValueGenerator) Next() (bool, error) {
 // Values implements the tree.ValueGenerator interface.
 func (s *seriesValueGenerator) Values() tree.Datums {
 	return s.genValue(s)
-}
-
-func makeArrayGenerator(_ *tree.EvalContext, args tree.Datums) (tree.ValueGenerator, error) {
-	arr := tree.MustBeDArray(args[0])
-	return &arrayValueGenerator{array: arr}, nil
 }
 
 // arrayValueGenerator is a value generator that returns each element of an
@@ -431,15 +342,6 @@ func (s *arrayValueGenerator) Next() (bool, error) {
 // Values implements the tree.ValueGenerator interface.
 func (s *arrayValueGenerator) Values() tree.Datums {
 	return tree.Datums{s.array.Array[s.nextIndex]}
-}
-
-func makeExpandArrayGenerator(
-	evalCtx *tree.EvalContext, args tree.Datums,
-) (tree.ValueGenerator, error) {
-	arr := tree.MustBeDArray(args[0])
-	g := &expandArrayValueGenerator{avg: arrayValueGenerator{array: arr}}
-	g.buf[1] = tree.NewDInt(tree.DInt(-1))
-	return g, nil
 }
 
 // expandArrayValueGenerator is a value generator that returns each element of
@@ -480,32 +382,6 @@ func (s *expandArrayValueGenerator) Values() tree.Datums {
 	s.buf[0] = s.avg.array.Array[s.avg.nextIndex]
 	s.buf[1] = tree.NewDInt(tree.DInt(s.avg.nextIndex + 1))
 	return s.buf[:]
-}
-
-func makeGenerateSubscriptsGenerator(
-	evalCtx *tree.EvalContext, args tree.Datums,
-) (tree.ValueGenerator, error) {
-	var arr *tree.DArray
-	dim := 1
-	if len(args) > 1 {
-		dim = int(tree.MustBeDInt(args[1]))
-	}
-	// We sadly only support 1D arrays right now.
-	if dim == 1 {
-		arr = tree.MustBeDArray(args[0])
-	} else {
-		arr = &tree.DArray{}
-	}
-	var reverse bool
-	if len(args) == 3 {
-		reverse = bool(tree.MustBeDBool(args[2]))
-	}
-	g := &subscriptsValueGenerator{
-		avg:     arrayValueGenerator{array: arr},
-		reverse: reverse,
-	}
-	g.buf[0] = tree.NewDInt(tree.DInt(-1))
-	return g, nil
 }
 
 // subscriptsValueGenerator is a value generator that returns a series
@@ -568,10 +444,6 @@ type unaryValueGenerator struct {
 
 var unaryValueGeneratorType = types.TTuple{}
 
-func makeUnaryGenerator(_ *tree.EvalContext, args tree.Datums) (tree.ValueGenerator, error) {
-	return &unaryValueGenerator{}, nil
-}
-
 // ResolvedType implements the tree.ValueGenerator interface.
 func (*unaryValueGenerator) ResolvedType() types.T { return unaryValueGeneratorType }
 
@@ -619,14 +491,12 @@ var (
 var jsonArrayElementsImpl = makeGeneratorOverload(
 	tree.ArgTypes{{"input", types.JSON}},
 	jsonArrayGeneratorType,
-	makeJSONArrayAsJSONGenerator,
 	"Expands a JSON array to a set of JSON values.",
 )
 
 var jsonArrayElementsTextImpl = makeGeneratorOverload(
 	tree.ArgTypes{{"input", types.JSON}},
 	jsonArrayTextGeneratorType,
-	makeJSONArrayAsTextGenerator,
 	"Expands a JSON array to a set of text values.",
 )
 
@@ -645,18 +515,6 @@ type jsonArrayGenerator struct {
 
 var errJSONCallOnNonArray = pgerror.NewError(pgerror.CodeInvalidParameterValueError,
 	"cannot be called on a non-array")
-
-func makeJSONArrayAsJSONGenerator(
-	_ *tree.EvalContext, args tree.Datums,
-) (tree.ValueGenerator, error) {
-	return makeJSONArrayGenerator(args, false)
-}
-
-func makeJSONArrayAsTextGenerator(
-	_ *tree.EvalContext, args tree.Datums,
-) (tree.ValueGenerator, error) {
-	return makeJSONArrayGenerator(args, true)
-}
 
 func makeJSONArrayGenerator(args tree.Datums, asText bool) (tree.ValueGenerator, error) {
 	target := tree.MustBeDJSON(args[0])
@@ -714,7 +572,6 @@ func (g *jsonArrayGenerator) Values() tree.Datums {
 var jsonObjectKeysImpl = makeGeneratorOverload(
 	tree.ArgTypes{{"input", types.JSON}},
 	jsonObjectKeysGeneratorType,
-	makeJSONObjectKeysGenerator,
 	"Returns sorted set of keys in the outermost JSON object.",
 )
 
@@ -724,27 +581,6 @@ var jsonObjectKeysGeneratorType = types.String
 
 type jsonObjectKeysGenerator struct {
 	iter *json.ObjectIterator
-}
-
-func makeJSONObjectKeysGenerator(
-	_ *tree.EvalContext, args tree.Datums,
-) (tree.ValueGenerator, error) {
-	target := tree.MustBeDJSON(args[0])
-	iter, err := target.ObjectIter()
-	if err != nil {
-		return nil, err
-	}
-	if iter == nil {
-		switch target.Type() {
-		case json.ArrayJSONType:
-			return nil, errJSONObjectKeysOnArray
-		default:
-			return nil, errJSONObjectKeysOnScalar
-		}
-	}
-	return &jsonObjectKeysGenerator{
-		iter: iter,
-	}, nil
 }
 
 // ResolvedType implements the tree.ValueGenerator interface.
@@ -771,14 +607,12 @@ func (g *jsonObjectKeysGenerator) Values() tree.Datums {
 var jsonEachImpl = makeGeneratorOverload(
 	tree.ArgTypes{{"input", types.JSON}},
 	jsonEachGeneratorType,
-	makeJSONEachImplGenerator,
 	"Expands the outermost JSON or JSONB object into a set of key/value pairs.",
 )
 
 var jsonEachTextImpl = makeGeneratorOverload(
 	tree.ArgTypes{{"input", types.JSON}},
 	jsonEachTextGeneratorType,
-	makeJSONEachTextImplGenerator,
 	"Expands the outermost JSON or JSONB object into a set of key/value pairs. "+
 		"The returned values will be of type text.",
 )
@@ -801,16 +635,6 @@ type jsonEachGenerator struct {
 	key    tree.Datum
 	value  tree.Datum
 	asText bool
-}
-
-func makeJSONEachImplGenerator(_ *tree.EvalContext, args tree.Datums) (tree.ValueGenerator, error) {
-	return makeJSONEachGenerator(args, false)
-}
-
-func makeJSONEachTextImplGenerator(
-	_ *tree.EvalContext, args tree.Datums,
-) (tree.ValueGenerator, error) {
-	return makeJSONEachGenerator(args, true)
 }
 
 func makeJSONEachGenerator(args tree.Datums, asText bool) (tree.ValueGenerator, error) {

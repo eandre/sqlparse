@@ -29,7 +29,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/cockroachdb/apd"
+	apd "github.com/cockroachdb/apd/v2"
 	"github.com/eandre/sqlparse/pkg/util/bitarray"
 	"github.com/eandre/sqlparse/pkg/util/duration"
 	"github.com/eandre/sqlparse/pkg/util/ipaddr"

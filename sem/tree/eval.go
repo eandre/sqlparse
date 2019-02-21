@@ -27,7 +27,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/cockroachdb/apd"
+	apd "github.com/cockroachdb/apd/v2"
 	"github.com/eandre/sqlparse/coltypes"
 	"github.com/eandre/sqlparse/lex"
 	"github.com/eandre/sqlparse/pkg/util/bitarray"

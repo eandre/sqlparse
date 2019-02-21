@@ -26,7 +26,7 @@ import (
 	"unicode/utf8"
 	"unsafe"
 
-	"github.com/cockroachdb/apd"
+	apd "github.com/cockroachdb/apd/v2"
 	"github.com/eandre/sqlparse/pkg/util/encoding"
 	"github.com/eandre/sqlparse/pkg/util/pgerror"
 )

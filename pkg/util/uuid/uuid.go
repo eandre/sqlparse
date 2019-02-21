@@ -21,7 +21,7 @@ import (
 
 	"github.com/eandre/sqlparse/pkg/util/uint128"
 	"github.com/pkg/errors"
-	"github.com/satori/go.uuid"
+	"github.com/gofrs/uuid"
 )
 
 // UUID is a thin wrapper around "github.com/satori/go.uuid".UUID that can be
